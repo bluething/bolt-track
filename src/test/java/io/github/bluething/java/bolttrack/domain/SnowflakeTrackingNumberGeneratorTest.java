@@ -1,4 +1,4 @@
-package io.github.bluething.java.bolttrack.generator;
+package io.github.bluething.java.bolttrack.domain;
 
 import org.junit.jupiter.api.Test;
 
