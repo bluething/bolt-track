@@ -2,11 +2,15 @@ package io.github.bluething.java.bolttrack.rest;
 
 import io.github.bluething.java.bolttrack.domain.TrackingNumberRecords;
 import io.github.bluething.java.bolttrack.domain.TrackingNumberService;
+import io.github.bluething.java.bolttrack.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,7 +25,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
-@WebMvcTest(TrackingNumberController.class)
+@WebMvcTest(controllers = TrackingNumberController.class)
+@Import({GlobalExceptionHandler.class})
 class TrackingNumberControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -87,4 +92,32 @@ class TrackingNumberControllerTest {
         // service.generate(...) should never be called on validation failure
         verifyNoInteractions(service);
     }
+
+    @Test
+    @DisplayName("GET /next-tracking-number with invalid params returns ApiError JSON")
+    void nextViaGet_invalidRequest_returnsApiErrorBody() throws Exception {
+        mockMvc.perform(get("/api/v1/next-tracking-number")
+                        // invalid origin_country_id (should be exactly 2 uppercase letters)
+                        .param("origin_country_id", "USA")
+                        .param("destination_country_id", "ID")
+                        .param("weight", "1.234")
+                        .param("created_at", "2025-06-26T10:00:00+00:00")
+                        .param("customer_id", "de619854-b59b-425e-9db4-943979e1bd49")
+                        .param("customer_name", "RedBox Logistics")
+                        .param("customer_slug", "redbox-logistics")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors").isArray())
+                .andExpect(jsonPath("$.errors[0].field").value("origin_country_id"))
+                .andExpect(jsonPath("$.path").value("/api/v1/next-tracking-number"));
+
+        // service.generate(...) should never be called on validation failure
+        verifyNoInteractions(service);
+    }
+
 }
