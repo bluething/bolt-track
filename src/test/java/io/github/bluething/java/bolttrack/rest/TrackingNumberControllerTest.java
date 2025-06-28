@@ -3,6 +3,7 @@ package io.github.bluething.java.bolttrack.rest;
 import io.github.bluething.java.bolttrack.domain.TrackingNumberRecords;
 import io.github.bluething.java.bolttrack.domain.TrackingNumberService;
 import io.github.bluething.java.bolttrack.exception.GlobalExceptionHandler;
+import io.github.bluething.java.bolttrack.exception.InvalidStatusTransitionException;
 import io.github.bluething.java.bolttrack.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
@@ -193,6 +195,76 @@ class TrackingNumberControllerTest {
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.errors[0].field", containsString("trackingNumber")))
                 .andExpect(jsonPath("$.path").value("/api/v1/track/" + badTrackingNumber));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("PATCH /track/{tracking_number}/status with valid status → 200 + detail JSON")
+    void updateStatus_validTransition_returns200AndBody() throws Exception {
+        String tn = "ABC123XYZ";
+        String newStatus = "IN_TRANSIT";
+        var dto = new TrackingNumberRecords.TrackingDetailData(
+                tn,
+                "MY",
+                "ID",
+                new BigDecimal("1.234"),
+                Instant.parse("2025-06-26T10:00:00Z"),
+                UUID.fromString("de619854-b59b-425e-9db4-943979e1bd49"),
+                "Acme Corp",
+                "acme-corp",
+                Instant.parse("2025-06-26T10:05:00Z"),
+                newStatus,
+                Map.of("fragile", true)
+        );
+        when(service.updateStatus(eq(tn), eq(newStatus))).thenReturn(dto);
+
+        mockMvc.perform(patch("/api/v1/track/{tn}/status", tn)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"" + newStatus + "\"}")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.tracking_number").value(tn))
+                .andExpect(jsonPath("$.status").value(newStatus))
+                .andExpect(jsonPath("$.metadata.fragile").value(true));
+
+        verify(service).updateStatus(tn, newStatus);
+    }
+
+    @Test
+    @DisplayName("PATCH /track/{tracking_number}/status with invalid transition → 400 Bad Request")
+    void updateStatus_invalidTransition_returns400AndError() throws Exception {
+        String tn = "ABC123XYZ";
+        String newStatus = "DELIVERED";
+        when(service.updateStatus(eq(tn), eq(newStatus)))
+                .thenThrow(new InvalidStatusTransitionException("CREATED", newStatus));
+
+        mockMvc.perform(patch("/api/v1/track/{tn}/status", tn)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"" + newStatus + "\"}")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Cannot transition")));
+
+        verify(service).updateStatus(tn, newStatus);
+    }
+
+    @Test
+    @DisplayName("PATCH /track/{tracking_number}/status with missing status → 400 Bad Request")
+    void updateStatus_missingStatus_returns400AndValidationError() throws Exception {
+        String tn = "ABC123XYZ";
+
+        mockMvc.perform(patch("/api/v1/track/{tn}/status", tn)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}")
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors[0].field", containsString("status")));
 
         verifyNoInteractions(service);
     }
