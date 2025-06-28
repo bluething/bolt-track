@@ -31,4 +31,14 @@ class TrackingNumberController {
         var detailDto = trackingNumberService.findByTrackingNumber(trackingNumber);
         return TrackingRestMapper.toDetailRest(detailDto);
     }
+
+    @PatchMapping("/track/{tracking_number}/status")
+    public TrackingDetailResponse updateStatus(
+            @PathVariable("tracking_number") String trackingNumber,
+            @Valid @RequestBody TrackingStatusUpdateRequest request
+    ) {
+            var detailDto = trackingNumberService.updateStatus(trackingNumber, request.status());
+            return TrackingRestMapper.toDetailRest(detailDto);
+
+    }
 }
