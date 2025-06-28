@@ -2,6 +2,7 @@ package io.github.bluething.java.bolttrack.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.bluething.java.bolttrack.persistence.TrackingNumberDocument;
 import org.bson.Document;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,8 @@ import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -129,6 +132,72 @@ class TrackingNumberIT {
         // ensure nothing was persisted
         long count = mongoTemplate.getCollection("tracking_numbers").countDocuments();
         assertThat(count).isZero();
+    }
+
+    @Test
+    @DisplayName("GET /track/{tracking_number} with valid existing record → 200 + detail JSON")
+    void detail_validTrackingNumber_returnsDetail() throws Exception {
+        // arrange: create & insert a document
+        TrackingNumberDocument doc = new TrackingNumberDocument (
+                null,
+                "ABC123XYZ",
+                "MY",
+                "ID",
+                new BigDecimal("1.234"),
+                UUID.fromString("de619854-b59b-425e-9db4-943979e1bd49"),
+                "RedBox Logistics",
+                "redbox-logistics",
+                Instant.parse("2025-06-26T10:00:00Z"),
+                "CREATED",
+                Map.of("fragile", true)
+        );
+        mongoTemplate.insert(doc);
+
+        // act & assert
+        var mvc = mockMvc.perform(get("/api/v1/track/{tn}", doc.getTrackingNumber())
+                        .accept("application/json"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(jsonPath("$.tracking_number").value(doc.getTrackingNumber()))
+                .andExpect(jsonPath("$.origin_country_id").value("MY"))
+                .andExpect(jsonPath("$.destination_country_id").value("ID"))
+                .andExpect(jsonPath("$.weight").value(1.234))
+                .andExpect(jsonPath("$.generated_at").value("2025-06-26T10:00:00Z"))
+                .andExpect(jsonPath("$.customer_id").value(doc.getCustomerId().toString()))
+                .andExpect(jsonPath("$.customer_name").value("RedBox Logistics"))
+                .andExpect(jsonPath("$.customer_slug").value("redbox-logistics"))
+                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andExpect(jsonPath("$.metadata.fragile").value(true))
+                .andReturn();
+
+        // verify persistence via raw MongoTemplate
+        Document saved = mongoTemplate.findOne(
+                org.springframework.data.mongodb.core.query.Query.query(
+                        org.springframework.data.mongodb.core.query.Criteria.where("tracking_number")
+                                .is(doc.getTrackingNumber())
+                ), Document.class, "tracking_numbers");
+        assertThat(saved).isNotNull();
+        assertThat(saved.getString("status")).isEqualTo("CREATED");
+    }
+
+    @Test
+    @DisplayName("GET /track/{tracking_number} with non-existent record → 404 Not Found")
+    void detail_nonExistent_returns404() throws Exception {
+        mockMvc.perform(get("/api/v1/track/{tn}", "NONEXISTENT123")
+                        .accept("application/json"))
+                .andExpect(status().isNotFound());
+        // ensure collection is still empty
+        assertThat(mongoTemplate.getCollection("tracking_numbers").countDocuments()).isZero();
+    }
+
+    @Test
+    @DisplayName("GET /track/{tracking_number} with invalid ID format → 400 Bad Request")
+    void detail_invalidFormat_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/track/{tn}", "invalid_slug!")
+                        .accept("application/json"))
+                .andExpect(status().isBadRequest());
+        // no documents should be created
+        assertThat(mongoTemplate.getCollection("tracking_numbers").countDocuments()).isZero();
     }
 
 }
