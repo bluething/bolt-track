@@ -18,4 +18,16 @@ class TrackingRestMapper {
                 rest.customer_name(),
                 rest.customer_slug());
     }
+    public static TrackingDetailResponse toDetailRest(TrackingNumberRecords.TrackingDetailData dto) {
+        return new TrackingDetailResponse(dto.trackingNumber(),
+                dto.originCountryId(),
+                dto.destinationCountryId(),
+                dto.weight(),
+                dto.customerId(),
+                dto.customerName(),
+                dto.customerSlug(),
+                dto.generatedAt(),
+                dto.status(),
+                dto.metadata());
+    }
 }
