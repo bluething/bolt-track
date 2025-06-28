@@ -1,5 +1,6 @@
 package io.github.bluething.java.bolttrack.domain;
 
+import io.github.bluething.java.bolttrack.exception.ResourceNotFoundException;
 import io.github.bluething.java.bolttrack.persistence.TrackingNumberDocument;
 import io.github.bluething.java.bolttrack.persistence.TrackingNumberRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,27 @@ class DefaultTrackingNumberService implements TrackingNumberService {
         return new TrackingNumberRecords.TrackingNumberData(
                 trackingNumber,
                 generatedAt
+        );
+    }
+
+    @Override
+    public TrackingNumberRecords.TrackingDetailData findByTrackingNumber(String trackingNumber) {
+        TrackingNumberDocument doc = repository.findByTrackingNumber(trackingNumber)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("TrackingNumber", trackingNumber)
+                );
+        return new TrackingNumberRecords.TrackingDetailData(
+                doc.getTrackingNumber(),
+                doc.getOriginCountryId(),
+                doc.getDestinationCountryId(),
+                doc.getWeight(),
+                doc.getGeneratedAt(),
+                doc.getCustomerId(),
+                doc.getCustomerName(),
+                doc.getCustomerSlug(),
+                doc.getGeneratedAt(),
+                doc.getStatus(),
+                doc.getMetadata()
         );
     }
 }
