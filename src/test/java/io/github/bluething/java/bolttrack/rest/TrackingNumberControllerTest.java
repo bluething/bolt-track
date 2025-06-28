@@ -3,13 +3,12 @@ package io.github.bluething.java.bolttrack.rest;
 import io.github.bluething.java.bolttrack.domain.TrackingNumberRecords;
 import io.github.bluething.java.bolttrack.domain.TrackingNumberService;
 import io.github.bluething.java.bolttrack.exception.GlobalExceptionHandler;
+import io.github.bluething.java.bolttrack.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -17,8 +16,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -117,6 +118,82 @@ class TrackingNumberControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/next-tracking-number"));
 
         // service.generate(...) should never be called on validation failure
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/track/{tracking_number} – existing → 200 + detail JSON")
+    void detail_existingTrackingNumber_returns200AndBody() throws Exception {
+        // Arrange
+        var trackingNumber = "ABC123XYZ";
+        var dto = new TrackingNumberRecords.TrackingDetailData(
+                trackingNumber,
+                "MY", "ID",
+                new BigDecimal("2.345"),
+                Instant.parse("2025-06-26T09:00:00Z"),
+                UUID.fromString("de619854-b59b-425e-9db4-943979e1bd49"),
+                "Acme Corp",
+                "acme-corp",
+                Instant.parse("2025-06-26T09:01:00Z"),
+                "IN_TRANSIT",
+                Map.of("fragile", true)
+        );
+        when(service.findByTrackingNumber(trackingNumber)).thenReturn(dto);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/track/{tn}", trackingNumber)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.tracking_number").value(trackingNumber))
+                .andExpect(jsonPath("$.origin_country_id").value("MY"))
+                .andExpect(jsonPath("$.destination_country_id").value("ID"))
+                .andExpect(jsonPath("$.weight").value(2.345))
+                .andExpect(jsonPath("$.generated_at").value("2025-06-26T09:01:00Z"))
+                .andExpect(jsonPath("$.customer_id").value("de619854-b59b-425e-9db4-943979e1bd49"))
+                .andExpect(jsonPath("$.customer_name").value("Acme Corp"))
+                .andExpect(jsonPath("$.customer_slug").value("acme-corp"))
+                .andExpect(jsonPath("$.status").value("IN_TRANSIT"))
+                .andExpect(jsonPath("$.metadata.fragile").value(true));
+
+        // verify delegation
+        verify(service).findByTrackingNumber(trackingNumber);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/track/{tracking_number} – not found → 404 + ApiError")
+    void detail_nonExistentTrackingNumber_returns404AndErrorBody() throws Exception {
+        // Arrange
+        var trackingNumber = "NONEXISTENT";
+        when(service.findByTrackingNumber(trackingNumber))
+                .thenThrow(new ResourceNotFoundException("TrackingNumber", trackingNumber));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/track/{tn}", trackingNumber)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message", containsString("not found with identifier " + trackingNumber)))
+                .andExpect(jsonPath("$.path").value("/api/v1/track/" + trackingNumber));
+
+        verify(service).findByTrackingNumber(trackingNumber);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/track/{tracking_number} – invalid format → 400 + ApiError")
+    void detail_invalidTrackingNumberFormat_returns400AndErrorBody() throws Exception {
+        var badTrackingNumber = "bad_slug!";
+
+        mockMvc.perform(get("/api/v1/track/{tn}", badTrackingNumber)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors[0].field", containsString("trackingNumber")))
+                .andExpect(jsonPath("$.path").value("/api/v1/track/" + badTrackingNumber));
+
         verifyNoInteractions(service);
     }
 
