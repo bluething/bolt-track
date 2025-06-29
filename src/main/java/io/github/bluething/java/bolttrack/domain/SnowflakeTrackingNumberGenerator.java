@@ -1,5 +1,6 @@
 package io.github.bluething.java.bolttrack.domain;
 
+import io.micrometer.core.annotation.Timed;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -7,7 +8,7 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-final class SnowflakeTrackingNumberGenerator implements TrackingNumberGenerator {
+class SnowflakeTrackingNumberGenerator implements TrackingNumberGenerator {
     // bits allocation
     private static final long WORKER_ID_BITS   = 10L;
     private static final long SEQUENCE_BITS    = 12L;
@@ -36,8 +37,8 @@ final class SnowflakeTrackingNumberGenerator implements TrackingNumberGenerator 
         this.workerId = workerId;
     }
 
-
     @Override
+    @Timed(value = "tracking.number.generate")
     public String generateTrackingNumber() {
         while (true) {
             // 1) Snapshot the packed state (timestamp | sequence)
