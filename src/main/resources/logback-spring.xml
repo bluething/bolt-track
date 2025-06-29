@@ -1,0 +1,68 @@
+<configuration>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="bolt-track"/>
+    <springProperty scope="context" name="APP_VERSION" source="app.version" defaultValue="unknown"/>
+
+    <!-- =================================================================== -->
+    <!-- LOCAL DEVELOPMENT - SIMPLE CONSOLE OUTPUT -->
+    <!-- =================================================================== -->
+
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>
+                    %d{HH:mm:ss.SSS} [%thread] %highlight(%-5level) [%X{correlationId:-}] %logger{36} - %msg%n
+                </pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- =================================================================== -->
+    <!-- CLOUD RUN - JSON CONSOLE OUTPUT -->
+    <!-- =================================================================== -->
+
+    <springProfile name="prod">
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp>
+                        <fieldName>timestamp</fieldName>
+                        <timeZone>UTC</timeZone>
+                    </timestamp>
+                    <logLevel>
+                        <fieldName>severity</fieldName>
+                    </logLevel>
+                    <message>
+                        <fieldName>message</fieldName>
+                    </message>
+                    <mdc/>
+                    <loggerName>
+                        <fieldName>logger</fieldName>
+                    </loggerName>
+                    <stackTrace>
+                        <fieldName>stackTrace</fieldName>
+                    </stackTrace>
+                    <pattern>
+                        <pattern>
+                            {
+                            "service": "${APP_NAME}",
+                            "version": "${APP_VERSION}"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
