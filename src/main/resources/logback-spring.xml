@@ -1,68 +1,36 @@
-<configuration>
-    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="bolt-track"/>
-    <springProperty scope="context" name="APP_VERSION" source="app.version" defaultValue="unknown"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
 
-    <!-- =================================================================== -->
-    <!-- LOCAL DEVELOPMENT - SIMPLE CONSOLE OUTPUT -->
-    <!-- =================================================================== -->
+    <!-- bring in Spring Boot defaults -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
+    <!-- non-prod: human-readable console -->
     <springProfile name="!prod">
+        <property name="LOG_PATTERN"
+                  value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSZZ} [%thread] %-5level %logger{36} [trace=%X{traceId:-},span=%X{spanId:-}] - %msg%n"/>
+
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>
-                    %d{HH:mm:ss.SSS} [%thread] %highlight(%-5level) [%X{correlationId:-}] %logger{36} - %msg%n
-                </pattern>
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
             </encoder>
         </appender>
     </springProfile>
 
-    <!-- =================================================================== -->
-    <!-- CLOUD RUN - JSON CONSOLE OUTPUT -->
-    <!-- =================================================================== -->
-
+    <!-- prod: structured JSON to console -->
     <springProfile name="prod">
-        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-                <providers>
-                    <timestamp>
-                        <fieldName>timestamp</fieldName>
-                        <timeZone>UTC</timeZone>
-                    </timestamp>
-                    <logLevel>
-                        <fieldName>severity</fieldName>
-                    </logLevel>
-                    <message>
-                        <fieldName>message</fieldName>
-                    </message>
-                    <mdc/>
-                    <loggerName>
-                        <fieldName>logger</fieldName>
-                    </loggerName>
-                    <stackTrace>
-                        <fieldName>stackTrace</fieldName>
-                    </stackTrace>
-                    <pattern>
-                        <pattern>
-                            {
-                            "service": "${APP_NAME}",
-                            "version": "${APP_VERSION}"
-                            }
-                        </pattern>
-                    </pattern>
-                </providers>
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- add any static fields you want on every event -->
+                <customFields>{"app":"bolt-track","env":"prod"}</customFields>
+                <!-- automatically include timestamp, level, logger, thread, MDC fields -->
             </encoder>
         </appender>
     </springProfile>
 
-    <springProfile name="!prod">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-    </springProfile>
+    <!-- root logger: only console -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
 
-    <springProfile name="prod">
-        <root level="INFO">
-            <appender-ref ref="JSON_CONSOLE"/>
-        </root>
-    </springProfile>
 </configuration>
