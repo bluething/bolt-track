@@ -27,10 +27,15 @@ jobs:
         run: |
           mvn -B -Pnative spring-boot:build-image \
             -Dspring-boot.build-image.builder=paketobuildpacks/builder:tiny \
-            -Dspring-boot.build-image.imageName=${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -Dspring-boot.build-image.publish=true
+            -Dspring-boot.build-image.publish=true \
+            -Dspring-boot.build-image.env.BP_NATIVE_IMAGE_BUILD_ARGUMENTS="\
+            --no-fallback \
+            --no-server \
+            -J-Xmx6g \
+            -H:MaxRuntimeCompileThreads=2"
 
-      - name: Upload JaCoCo report
+
+  - name: Upload JaCoCo report
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
