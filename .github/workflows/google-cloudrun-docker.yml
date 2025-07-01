@@ -57,7 +57,7 @@ jobs:
 
       - name: Build & push native image
         run: |
-          IMAGE_URI=asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/bolt-track:$GITHUB_SHA
+          IMAGE_URI=asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/bolt-track:${{ github.sha }}
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
 
@@ -65,7 +65,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v0
         with:
           service: bolt-track
-          image: asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/bolt-track:$GITHUB_SHA
+          image: asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/bolt-track:${{ github.sha }}
           region: asia-southeast2
           allow_unauthenticated: true
           secret_env_vars: |
