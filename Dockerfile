@@ -1,8 +1,5 @@
 # ┌── GraalVM Build Stage ───────────────────────────────────────────────────────
-FROM ghcr.io/graalvm/graalvm-community:21 AS builder
-
-# 1) install native-image tool
-RUN gu install native-image
+FROM ghcr.io/graalvm/native-image-community:21 AS builder
 
 WORKDIR /workspace
 
