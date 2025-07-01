@@ -1,27 +1,41 @@
 # ┌── GraalVM Build Stage ───────────────────────────────────────────────────────
-FROM ghcr.io/graalvm/native-image-community:21 AS builder
+FROM ghcr.io/graalvm/jdk-community:21 AS builder
+
+# Install Maven
+RUN microdnf update -y && \
+    microdnf install -y wget tar gzip && \
+    wget https://archive.apache.org/dist/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz && \
+    tar -xzf apache-maven-3.9.6-bin.tar.gz -C /opt && \
+    ln -s /opt/apache-maven-3.9.6 /opt/maven && \
+    rm apache-maven-3.9.6-bin.tar.gz && \
+    microdnf clean all
+
+ENV PATH="/opt/maven/bin:${PATH}"
+ENV MAVEN_HOME="/opt/maven"
 
 WORKDIR /workspace
 
-# 2) cache Maven deps
+# Verify installations
+RUN java -version && mvn -version
+
+# Cache Maven dependencies
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# 3) copy source & compile AOT + native image
+# Copy source and build native image
 COPY src ./src
-# activates the 'native' profile
 RUN mvn clean package -Pnative -DskipTests -B
 
 # ┌── Runtime Stage ─────────────────────────────────────────────────────────────
-# GraalVM‐produced binaries are fully static ⇒ we can use scratch
 FROM scratch
-# pick up the native binary
+
+# Copy the native binary
 COPY --from=builder /workspace/target/bolt-track /app
 
-# Activate Spring 'prod' profile
+# Set environment variables
 ENV SPRING_PROFILES_ACTIVE=prod
 
-# expose for tooling—but Cloud Run ignores this
+# Expose port
 EXPOSE 8080
 
 ENTRYPOINT ["/app"]
