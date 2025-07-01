@@ -54,5 +54,5 @@ jobs:
           region: asia-southeast2
           allow_unauthenticated: true
           secret_env_vars: |
-      REDIS_PASS=projects/${{ secrets.GCP_PROJECT_ID }}/secrets/mongodb_atlas_porto/versions/latest
-      MONGODB_PASS_ADM=projects/${{ secrets.GCP_PROJECT_ID }}/secrets/upstash_pass/versions/latest
+            REDIS_PASS=projects/${{ secrets.GCP_PROJECT_ID }}/secrets/mongodb_atlas_porto/versions/latest
+            MONGODB_PASS_ADM=projects/${{ secrets.GCP_PROJECT_ID }}/secrets/upstash_pass/versions/latest
