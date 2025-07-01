@@ -25,9 +25,13 @@ class RequestResponseLoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
-        logRequest(requestWrapper);
-        filterChain.doFilter(requestWrapper, responseWrapper);
-        logResponse(responseWrapper);
+        try {
+            logRequest(requestWrapper);
+            filterChain.doFilter(requestWrapper, responseWrapper);
+        } finally {
+            logResponse(responseWrapper);
+            responseWrapper.copyBodyToResponse();
+        }
     }
 
     private void logRequest(ContentCachingRequestWrapper request) {
