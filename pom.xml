@@ -125,6 +125,7 @@
     </dependencies>
 
     <build>
+        <finalName>bolt-track</finalName>
         <plugins>
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
@@ -146,6 +147,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <classifier/>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
