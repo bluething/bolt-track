@@ -20,6 +20,13 @@ jobs:
           cache: 'maven'
 
       # build & enforce coverage
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
       - name: Build native + enforce coverage
         run: mvn clean package -Pnative test
 
