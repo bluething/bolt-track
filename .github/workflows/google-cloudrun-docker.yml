@@ -29,10 +29,10 @@ jobs:
             -Dspring-boot.build-image.builder=paketobuildpacks/builder:tiny \
             -Dspring-boot.build-image.publish=true \
             -Dspring-boot.build-image.env.BP_NATIVE_IMAGE_BUILD_ARGUMENTS="\
-            --no-fallback \
-            --no-server \
-            -J-Xmx6g \
-            -H:MaxRuntimeCompileThreads=2"
+              --no-fallback \
+              --no-server \
+              -J-Xmx6g \
+              -H:MaxRuntimeCompileThreads=2"
 
 
   - name: Upload JaCoCo report
