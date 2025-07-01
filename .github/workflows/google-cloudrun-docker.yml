@@ -11,11 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1) set up GraalVM 21
+      # 1) Java 21
       - name: Set up GraalVM 21
         uses: actions/setup-java@v3
         with:
-          distribution: 'graalvm'
+          distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
 
