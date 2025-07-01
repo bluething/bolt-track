@@ -21,6 +21,9 @@ FROM scratch
 # pick up the native binary
 COPY --from=builder /workspace/target/bolt-track /app
 
+# Activate Spring 'prod' profile
+ENV SPRING_PROFILES_ACTIVE=prod
+
 # expose for tooling—but Cloud Run ignores this
 EXPOSE 8080
 
