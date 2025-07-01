@@ -45,10 +45,8 @@ jobs:
         run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Configure Docker for Artifact Registry
-        uses: google-github-actions/artifact-registry-auth@v1
-        with:
-          location: asia-southeast2
-          repository: my-docker-repo
+        run: |
+          gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
 
       - name: Build & push native image
         run: |
