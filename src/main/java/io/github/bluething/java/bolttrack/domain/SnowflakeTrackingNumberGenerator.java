@@ -1,7 +1,6 @@
 package io.github.bluething.java.bolttrack.domain;
 
 import io.micrometer.core.annotation.Timed;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -28,13 +27,13 @@ class SnowflakeTrackingNumberGenerator implements TrackingNumberGenerator {
      */
     private final AtomicLong state = new AtomicLong(0L);
 
-    SnowflakeTrackingNumberGenerator(@Value("${snowflake.worker-id}") long workerId) {
+    SnowflakeTrackingNumberGenerator(WorkerIdProvider idProvider) {
+        workerId = idProvider.getWorkerId();
         if (workerId < 0 || workerId > MAX_WORKER_ID) {
             throw new IllegalArgumentException(
                     "worker-id must be between 0 and " + MAX_WORKER_ID
             );
         }
-        this.workerId = workerId;
     }
 
     @Override
