@@ -1,41 +1,32 @@
-# ┌── GraalVM Build Stage ───────────────────────────────────────────────────────
-FROM ghcr.io/graalvm/jdk-community:21 AS builder
+### Multi-stage build for smallest possible image (Java 21, non-native)
 
-# Install Maven
-RUN microdnf update -y && \
-    microdnf install -y wget tar gzip && \
-    wget https://archive.apache.org/dist/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz && \
-    tar -xzf apache-maven-3.9.6-bin.tar.gz -C /opt && \
-    ln -s /opt/apache-maven-3.9.6 /opt/maven && \
-    rm apache-maven-3.9.6-bin.tar.gz && \
-    microdnf clean all
+# ┌── Build Stage ─────────────────────────────────────────────────
+FROM maven:3.9.10-eclipse-temurin-21-alpine AS builder
 
-ENV PATH="/opt/maven/bin:${PATH}"
-ENV MAVEN_HOME="/opt/maven"
-
+# Set working directory
 WORKDIR /workspace
 
-# Verify installations
-RUN java -version && mvn -version
-
-# Cache Maven dependencies
+# Copy Maven configuration and source
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Copy source and build native image
 COPY src ./src
-RUN mvn clean package -Pnative -DskipTests -B
 
-# ┌── Runtime Stage ─────────────────────────────────────────────────────────────
-FROM scratch
+# Package the application (skip tests for speed)
+RUN mvn clean package -DskipTests -B
 
-# Copy the native binary
-COPY --from=builder /workspace/target/bolt-track.jar /app
+# ┌── Runtime Stage ────────────────────────────────────────────────
+FROM gcr.io/distroless/java21-debian12:nonroot
 
-# Set environment variables
+# Create app directory
+WORKDIR /app
+
+# Copy the runnable JAR
+COPY --from=builder /workspace/target/bolt-track.jar ./bolt-track.jar
+
+# Activate production profile
 ENV SPRING_PROFILES_ACTIVE=prod
 
-# Expose port
+# Expose application port
 EXPOSE 8080
 
-ENTRYPOINT ["/app"]
+# Launch the Spring Boot application
+ENTRYPOINT ["java", "-jar", "./bolt-track.jar"]
